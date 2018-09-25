@@ -18,11 +18,13 @@ value of the normal log() function - can't be used directly for calculating the 
 many environments, log(125, 5) returns 3.0000000000000004 instead of 3, which means that gt_log(124, 5) - if
 implemented as ceil(log(value + 1, base)) - would return 4 instead of the correct 3.
 
-The functions in this module use a lookup table to speed up the calculation, so their time complexity is O(1)
+Most functions in this module use a lookup table to speed up the calculation, so their time complexity is O(1)
 instead of the usual O(log N). The fast_*_log() functions are strictly O(1), but require an explicit call to
 extend_fast_intlog_range_to_*() - which is O(log N) - before the first calculation, to initialize the
 aforementioned lookup table. The *_log() functions extend the range automatically as required, so their complexity
-is amortized O(1).
+is amortized O(1). The slow_*_log() functions use the usual algorithm, so their complexity is O(log N).
+(The point of the slow_*_log() functions is that if you know that your value is going to be absolutely humongous,
+and you care more about memory than speed, you can avoid filling the lookup table if you want)
 
 The space requirement of the lookup table is O(log N) per each used base; Logarithms of values up to 2**64 in any
 base can be calculated with a lookup table of around 64 elements. The LUT method is 2-10x faster than the usual
@@ -36,10 +38,10 @@ import operator
 
 # Mapping from the rounding argument of int_log() to the needed operations
 _ROUNDING = {
-	'gt': (operator.add, operator.ge),
-	'ge': (operator.add, operator.gt),
-	'lt': (operator.sub, operator.le),
-	'le': (operator.sub, operator.lt),
+	'gt': (operator.add, operator.ge, operator.le, 0),
+	'ge': (operator.add, operator.gt, operator.lt, 0),
+	'lt': (operator.sub, operator.le, operator.lt, 1),
+	'le': (operator.sub, operator.lt, operator.le, 1),
 }
 
 # Allow the comparison functions from the operator module to be used in place of strings
@@ -153,7 +155,7 @@ def int_log(value, base, rounding):
 	"""
 	if value <= 0:
 		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
-	add_op, cmp_op = _ROUNDING[rounding]
+	add_op, cmp_op, _, _ = _ROUNDING[rounding]
 	try:
 		power, limit = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
@@ -178,25 +180,79 @@ def fast_le_log(value, base):
 	return power - (value < limit)
 
 def fast_int_log(value, base, rounding):
-	add_op, cmp_op = _ROUNDING[rounding]
+	add_op, cmp_op, _, _ = _ROUNDING[rounding]
 	power, limit = _lut[base][value.bit_length()]
 	return add_op(power, cmp_op(value, limit))
 
 
-def _copy_docstrings(doc_suffix):
-	"""Copy docstrings from the default functions to the fast variant, with the given extra documentation"""
+def slow_gt_log(value, base):
+	if value <= 0:
+		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+	result = 1
+	power = 0
+	while result <= value:
+		result *= base
+		power += 1
+	return power
+
+def slow_ge_log(value, base):
+	if value <= 0:
+		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+	result = 1
+	power = 0
+	while result < value:
+		result *= base
+		power += 1
+	return power
+
+def slow_lt_log(value, base):
+	if value <= 0:
+		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+	result = 1
+	power = 0
+	while result < value:
+		result *= base
+		power += 1
+	return power - 1
+
+def slow_le_log(value, base):
+	if value <= 0:
+		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+	result = 1
+	power = 0
+	while result <= value:
+		result *= base
+		power += 1
+	return power - 1
+
+def slow_int_log(value, base, rounding):
+	if value <= 0:
+		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+	_, _, cmp_op, sub = _ROUNDING[rounding]
+	result = 1
+	power = 0
+	while cmp_op(result, value):
+		result *= base
+		power += 1
+	return power - sub
+
+
+def _copy_docstrings(**adfixes):
+	"""Copy docstrings from the default functions to the given variants, with the given extra documentation"""
 	globs = globals()
-	for variant in 'gt ge lt le int'.split():
-		src_name = '_'.join((variant, 'log'))
-		dst_name = '_'.join(('fast', variant, 'log'))
-		doc = globs[src_name].__doc__
-		if doc_suffix:
-			delim = '\n' + doc.rsplit('\n')[-1]
-			doc = delim.join((doc, doc_suffix, ''))
-		globs[dst_name].__doc__ = doc
+	for func_prefix, doc_suffix in adfixes.items():
+		for variant in 'gt ge lt le int'.split():
+			src_name = '_'.join((variant, 'log'))
+			dst_name = '_'.join((func_prefix, variant, 'log'))
+			doc = globs[src_name].__doc__
+			if doc_suffix:
+				delim = '\n' + doc.rsplit('\n')[-1]
+				doc = delim.join((doc, doc_suffix, ''))
+			globs[dst_name].__doc__ = doc
 
 _copy_docstrings(
-	'Note: You must call extend_fast_intlog_range_to_*() before the first call to this function.',
+	fast='Note: You must call extend_fast_intlog_range_to_*() before the first call to this function.',
+	slow='',
 )
 
 
@@ -240,7 +296,7 @@ def _test_all_intlog_funcs(max_value, bases, precision=14, verbose=False):
 	ops = 'gt ge lt le'.split()
 	test_funcs = partial(_test_intlog_funcs, max_value=max_value, bases=bases, precision=precision, verbose=verbose)
 
-	for speed in ' fast_'.split(' '):
+	for speed in 'slow_  fast_'.split(' '):
 		funcs = [globs[speed + op + '_log'] for op in ops]
 		if verbose:
 			print('Testing functions:', ' '.join(func.__name__ for func in funcs))
