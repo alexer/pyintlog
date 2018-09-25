@@ -70,7 +70,8 @@ def gt_log(value, base):
 
 	Note: You must call extend_intlog_range_to_*() before the first call to this function.
 	"""
-	assert value > 0, 'Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)'
+	if value <= 0:
+		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
 	power, limit = _lut[base][value.bit_length()]
 	return power + (value >= limit)
 
@@ -82,7 +83,8 @@ def ge_log(value, base):
 
 	Note: You must call extend_intlog_range_to_*() before the first call to this function.
 	"""
-	assert value > 0, 'Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)'
+	if value <= 0:
+		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
 	power, limit = _lut[base][value.bit_length()]
 	return power + (value > limit)
 
@@ -94,7 +96,8 @@ def lt_log(value, base):
 
 	Note: You must call extend_intlog_range_to_*() before the first call to this function.
 	"""
-	assert value > 0, 'Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)'
+	if value <= 0:
+		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
 	power, limit = _lut[base][value.bit_length()]
 	return power - (value <= limit)
 
@@ -106,7 +109,8 @@ def le_log(value, base):
 
 	Note: You must call extend_intlog_range_to_*() before the first call to this function.
 	"""
-	assert value > 0, 'Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)'
+	if value <= 0:
+		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
 	power, limit = _lut[base][value.bit_length()]
 	return power - (value < limit)
 
