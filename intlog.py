@@ -308,5 +308,20 @@ def _test_all_intlog_funcs(max_value, bases, precision=14, verbose=False):
 		test_funcs([partial(func, rounding=op) for op in ops])
 
 if __name__ == '__main__':
-	_test_all_intlog_funcs(10**6, range(2, 11), verbose=True)
+	import sys
+
+	max_value = 10**3
+	max_base = 10
+	try:
+		assert not len(sys.argv) > 3
+		if len(sys.argv) > 1:
+			max_value = eval(sys.argv[1])
+		if len(sys.argv) > 2:
+			max_base = int(sys.argv[2])
+	except:
+		print('Error: Invalid argument', file=sys.stderr)
+		print('Usage: python -m intlog [max_value [max_base]]', file=sys.stderr)
+		sys.exit(-1)
+
+	_test_all_intlog_funcs(max_value, range(2, max_base + 1), verbose=True)
 
