@@ -79,8 +79,8 @@ def _init_next_power(limits, power, value):
 
 def extend_fast_intlog_range_to_power(max_power, base):
 	"""Initialize or extend the range supported by the integer logarithm functions so that all integers up to base ** max_power are supported for the given base"""
-	limits, min_power, value = _init_base(base)
-	for power in range(min_power + 1, max_power + 1):
+	limits, power, value = _init_base(base)
+	for power in range(power + 1, max_power + 1):
 		value *= base
 		_init_next_power(limits, power, value)
 	return power, value
