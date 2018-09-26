@@ -1,0 +1,42 @@
+intlog - Functions for calculating integer logarithms and the corresponding powers
+
+This module provides functions for calculating 4 different variants of integer logarithm, which differ on how the
+real-valued logarithm is rounded to an integer and correspond to the inequality operators >, ≥, <, and ≤ (based on
+how the integer return value corresponds to the real-valued return value):
+
+exponent = gt_log(value, base) = ceil(log(value + 1, base))   # base ** (exponent - 1) <= value <  base ** exponent
+exponent = ge_log(value, base) = ceil(log(value, base))       # base ** (exponent - 1) <  value <= base ** exponent
+exponent = lt_log(value, base) = floor(log(value - 1, base))  # base ** exponent       <  value <= base ** (exponent + 1)
+exponent = le_log(value, base) = floor(log(value, base))      # base ** exponent       <= value <  base ** (exponent + 1)
+
+There's also an int_log(value, base, rounding), which selects the variant based on the rounding argument.
+
+Of course, because of the inexactness of floating point, the definitions above - which just ceil/floor the return
+value of the normal log() function - can't be used directly for calculating the integer logarithm. For example, on
+many environments, log(125, 5) returns 3.0000000000000004 instead of 3, which means that gt_log(124, 5) - if
+implemented as ceil(log(value + 1, base)) - would return 4 instead of the correct 3.
+
+Most functions in this module use a lookup table to speed up the calculation, so their time complexity is O(1)
+instead of the usual O(log N). The fast_*_log() functions are strictly O(1), but require an explicit call to
+extend_fast_range_to_*() - which is O(log N) - before the first calculation, to initialize the aforementioned
+lookup table. The *_log() functions extend the range automatically as required, so their complexity is amortized
+O(1). The slow_*_log() functions use the usual algorithm, so their complexity is O(log N).
+(The point of the slow_*_log() functions is that if you know that your value is going to be absolutely humongous,
+and you care more about memory than speed, you can avoid filling the lookup table if you want)
+
+[The complexity is only O(1) if one assumes basic operations on integers to be O(1). int.bit_length() is actually
+O(1), because Python knows the length of the buffer used to store the integer, and only has to check the most
+significant element. Addition, multiplication, comparison, etc., however, are O(log N) on integers, so all the
+functions are reeeally O(log N). In practice, however, when going from N=1 to N=2**200000, the fast_*_log()
+functions are only 2x slower on average (20x worst-case), while the slow_*_log() ones are 3000000x slower, taking
+over a second per call to calculate the result!]
+
+The space requirement of the lookup table is O(log N) per each used base; Logarithms of values up to 2**64 in any
+base can be calculated with a lookup table of around 64 elements. The LUT method is 2-10x faster than the usual
+method on typical inputs, although we are talking about only microseconds here. (The usual method can be ~30% - or
+a fraction of a microsecond - faster when the given value is smaller than the base itself)
+
+For every *_log() function, there is also a corresponding *_pow() function, which calculates the power corresponding
+to the exponent returned by the *_log() function.
+
+Note: You must call extend_fast_range_to_*() before the first call to any of the fast_*() functions.
