@@ -57,6 +57,15 @@ del operator, name, value, item, alias
 
 
 _lut = {}
+def _init_base(base):
+	"""Validate the given base, and either initialize or fetch the lookup table - and the previous power and limit - for it"""
+	if not isinstance(base, int):
+		raise TypeError('Integer logarithm base must be an integer, not %s' % base.__class__.__name__)
+	if base <= 1:
+		raise ValueError('Integer logarithm base must be greater than one')
+	limits = _lut.setdefault(base, [None, (0, 1)])
+	return (limits,) + limits[-1]
+
 def _init_next_power(limits, power, value):
 	"""Insert LUT entries for all bit lengths between the given power and the previous one
 
@@ -70,9 +79,7 @@ def _init_next_power(limits, power, value):
 
 def extend_fast_intlog_range_to_power(max_power, base):
 	"""Initialize or extend the range supported by the integer logarithm functions so that all integers up to base ** max_power are supported for the given base"""
-	assert isinstance(base, int)
-	limits = _lut.setdefault(base, [None, (0, 1)])
-	min_power, value = limits[-1]
+	limits, min_power, value = _init_base(base)
 	for power in range(min_power + 1, max_power + 1):
 		value *= base
 		_init_next_power(limits, power, value)
@@ -80,9 +87,7 @@ def extend_fast_intlog_range_to_power(max_power, base):
 
 def extend_fast_intlog_range_to_bitlen(max_bitlen, base):
 	"""Initialize or extend the range supported by the integer logarithm functions so that all integers up to the given bit length are supported for the given base"""
-	assert isinstance(base, int)
-	limits = _lut.setdefault(base, [None, (0, 1)])
-	power, value = limits[-1]
+	limits, power, value = _init_base(base)
 	bitlen = len(limits) - 1
 	while bitlen < max_bitlen:
 		value *= base
