@@ -6,10 +6,10 @@ This module provides functions for calculating 4 different variants of integer l
 real-valued logarithm is rounded to an integer and correspond to the inequality operators >, ≥, <, and ≤ (based on
 how the integer return value corresponds to the real-valued return value):
 
-power = gt_log(value, base) = ceil(log(value + 1, base))   # base ** (power - 1) <= value <  base ** power
-power = ge_log(value, base) = ceil(log(value, base))       # base ** (power - 1) <  value <= base ** power
-power = lt_log(value, base) = floor(log(value - 1, base))  # base ** power       <  value <= base ** (power + 1)
-power = le_log(value, base) = floor(log(value, base))      # base ** power       <= value <  base ** (power + 1)
+exponent = gt_log(value, base) = ceil(log(value + 1, base))   # base ** (exponent - 1) <= value <  base ** exponent
+exponent = ge_log(value, base) = ceil(log(value, base))       # base ** (exponent - 1) <  value <= base ** exponent
+exponent = lt_log(value, base) = floor(log(value - 1, base))  # base ** exponent       <  value <= base ** (exponent + 1)
+exponent = le_log(value, base) = floor(log(value, base))      # base ** exponent       <= value <  base ** (exponent + 1)
 
 There's also an int_log(value, base, rounding), which selects the variant based on the rounding argument.
 
@@ -56,12 +56,12 @@ for item in '>:gt >=:ge ≥:ge <:lt <=:le ≤:le'.split():
 del operator, name, value, item, alias
 
 
-_log_error = 'Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)'
+_log_error = 'Logarithm is only defined for numbers greater than zero (the logarithm approaches negative infinity as the argument approaches zero)'
 
 
 _lut = {}
 def _init_base(base):
-	"""Validate the given base, and either initialize or fetch the lookup table - and the previous power and limit - for it"""
+	"""Validate the given base, and either initialize or fetch the lookup table - and the previous exponent and power - for it"""
 	if not isinstance(base, int):
 		raise TypeError('Integer logarithm base must be an integer, not %s' % base.__class__.__name__)
 	if base <= 1:
@@ -69,91 +69,91 @@ def _init_base(base):
 	limits = _lut.setdefault(base, [None, (0, 1)])
 	return (limits,) + limits[-1]
 
-def _init_next_power(limits, power, value):
+def _init_next_power(limits, exponent, power):
 	"""Insert LUT entries for all bit lengths between the given power and the previous one
 
-	The given power must be exactly one larger than the previous one!
+	The given exponent must be exactly one larger than the previous one!
 	"""
-	bitlen = value.bit_length()
-	# All numbers (with previous_bitlen < number.bit_length() <= bitlen) less than the given value have an integer logarithm equal to the given power
+	bitlen = power.bit_length()
+	# All numbers (with previous_bitlen < number.bit_length() <= bitlen) less than the given power have ceil(log(number)) equal to the given exponent
 	while len(limits) <= bitlen:
-		limits.append((power, value))
+		limits.append((exponent, power))
 	return bitlen
 
-def extend_fast_intlog_range_to_power(max_power, base):
-	"""Initialize or extend the range supported by the integer logarithm functions so that all integers up to base ** max_power are supported for the given base"""
-	limits, power, value = _init_base(base)
-	for power in range(power + 1, max_power + 1):
-		value *= base
-		_init_next_power(limits, power, value)
-	return power, value
+def extend_fast_intlog_range_to_power(max_exponent, base):
+	"""Initialize or extend the range supported by the fast functions so that all integers up to base ** max_exponent are supported for the given base"""
+	limits, exponent, power = _init_base(base)
+	for exponent in range(exponent + 1, max_exponent + 1):
+		power *= base
+		_init_next_power(limits, exponent, power)
+	return exponent, power
 
 def extend_fast_intlog_range_to_bitlen(max_bitlen, base):
-	"""Initialize or extend the range supported by the integer logarithm functions so that all integers up to the given bit length are supported for the given base"""
-	limits, power, value = _init_base(base)
+	"""Initialize or extend the range supported by the fast functions so that all integers up to the given bit length are supported for the given base"""
+	limits, exponent, power = _init_base(base)
 	bitlen = len(limits) - 1
 	while bitlen < max_bitlen:
-		value *= base
-		power += 1
-		bitlen = _init_next_power(limits, power, value)
-	return power, value
+		power *= base
+		exponent += 1
+		bitlen = _init_next_power(limits, exponent, power)
+	return exponent, power
 
 
 def gt_log(value, base):
-	"""Return the minimum power of base greater than value
+	"""Return the minimum exponent of base such that the power is greater than value
 
-	That is, the returned power satisfies: base ** (power - 1) <= value < base ** power
+	That is, the returned exponent satisfies: base ** (exponent - 1) <= value < base ** exponent
 	This is also the exact integer equivalent of: ceil(log(value + 1, base))
 	"""
 	if value <= 0:
 		raise ValueError(_log_error)
 	try:
-		power, limit = _lut[base][value.bit_length()]
+		exponent, power = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
-		power, limit = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
-	return power + (value >= limit)
+		exponent, power = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
+	return exponent + (value >= power)
 
 def ge_log(value, base):
-	"""Return the minimum power of base greater than or equal to value
+	"""Return the minimum exponent of base such that the power is greater than or equal to value
 
-	That is, the returned power satisfies: base ** (power - 1) < value <= base ** power
+	That is, the returned exponent satisfies: base ** (exponent - 1) < value <= base ** exponent
 	This is also the exact integer equivalent of: ceil(log(value, base))
 	"""
 	if value <= 0:
 		raise ValueError(_log_error)
 	try:
-		power, limit = _lut[base][value.bit_length()]
+		exponent, power = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
-		power, limit = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
-	return power + (value > limit)
+		exponent, power = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
+	return exponent + (value > power)
 
 def lt_log(value, base):
-	"""Return the maximum power of base less than value
+	"""Return the maximum exponent of base such that the power is less than value
 
-	That is, the returned power satisfies: base ** power < value <= base ** (power + 1)
+	That is, the returned exponent satisfies: base ** exponent < value <= base ** (exponent + 1)
 	This is also the exact integer equivalent of: floor(log(value - 1, base))
 	"""
 	if value <= 0:
 		raise ValueError(_log_error)
 	try:
-		power, limit = _lut[base][value.bit_length()]
+		exponent, power = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
-		power, limit = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
-	return power - (value <= limit)
+		exponent, power = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
+	return exponent - (value <= power)
 
 def le_log(value, base):
-	"""Return the maximum power of base less than or equal to value
+	"""Return the maximum exponent of base such that the power is less than or equal to value
 
-	That is, the returned power satisfies: base ** power <= value < base ** (power + 1)
+	That is, the returned exponent satisfies: base ** exponent <= value < base ** (exponent + 1)
 	This is also the exact integer equivalent of: floor(log(value, base))
 	"""
 	if value <= 0:
 		raise ValueError(_log_error)
 	try:
-		power, limit = _lut[base][value.bit_length()]
+		exponent, power = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
-		power, limit = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
-	return power - (value < limit)
+		exponent, power = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
+	return exponent - (value < power)
 
 def int_log(value, base, rounding):
 	"""Return the integer logarithm of value for the given base according to the given rounding
@@ -165,84 +165,84 @@ def int_log(value, base, rounding):
 		raise ValueError(_log_error)
 	add_op, cmp_op, _, _ = _ROUNDING[rounding]
 	try:
-		power, limit = _lut[base][value.bit_length()]
+		exponent, power = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
-		power, limit = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
-	return add_op(power, cmp_op(value, limit))
+		exponent, power = extend_fast_intlog_range_to_bitlen(value.bit_length(), base)
+	return add_op(exponent, cmp_op(value, power))
 
 
 def fast_gt_log(value, base):
-	power, limit = _lut[base][value.bit_length()]
-	return power + (value >= limit)
+	exponent, power = _lut[base][value.bit_length()]
+	return exponent + (value >= power)
 
 def fast_ge_log(value, base):
-	power, limit = _lut[base][value.bit_length()]
-	return power + (value > limit)
+	exponent, power = _lut[base][value.bit_length()]
+	return exponent + (value > power)
 
 def fast_lt_log(value, base):
-	power, limit = _lut[base][value.bit_length()]
-	return power - (value <= limit)
+	exponent, power = _lut[base][value.bit_length()]
+	return exponent - (value <= power)
 
 def fast_le_log(value, base):
-	power, limit = _lut[base][value.bit_length()]
-	return power - (value < limit)
+	exponent, power = _lut[base][value.bit_length()]
+	return exponent - (value < power)
 
 def fast_int_log(value, base, rounding):
 	add_op, cmp_op, _, _ = _ROUNDING[rounding]
-	power, limit = _lut[base][value.bit_length()]
-	return add_op(power, cmp_op(value, limit))
+	exponent, power = _lut[base][value.bit_length()]
+	return add_op(exponent, cmp_op(value, power))
 
 
 def slow_gt_log(value, base):
 	if value <= 0:
 		raise ValueError(_log_error)
-	result = 1
-	power = 0
-	while result <= value:
-		result *= base
-		power += 1
-	return power
+	power = 1
+	exponent = 0
+	while power <= value:
+		power *= base
+		exponent += 1
+	return exponent
 
 def slow_ge_log(value, base):
 	if value <= 0:
 		raise ValueError(_log_error)
-	result = 1
-	power = 0
-	while result < value:
-		result *= base
-		power += 1
-	return power
+	power = 1
+	exponent = 0
+	while power < value:
+		power *= base
+		exponent += 1
+	return exponent
 
 def slow_lt_log(value, base):
 	if value <= 0:
 		raise ValueError(_log_error)
-	result = 1
-	power = 0
-	while result < value:
-		result *= base
-		power += 1
-	return power - 1
+	power = 1
+	exponent = 0
+	while power < value:
+		power *= base
+		exponent += 1
+	return exponent - 1
 
 def slow_le_log(value, base):
 	if value <= 0:
 		raise ValueError(_log_error)
-	result = 1
-	power = 0
-	while result <= value:
-		result *= base
-		power += 1
-	return power - 1
+	power = 1
+	exponent = 0
+	while power <= value:
+		power *= base
+		exponent += 1
+	return exponent - 1
 
 def slow_int_log(value, base, rounding):
 	if value <= 0:
 		raise ValueError(_log_error)
 	_, _, cmp_op, sub = _ROUNDING[rounding]
-	result = 1
-	power = 0
-	while cmp_op(result, value):
-		result *= base
-		power += 1
-	return power - sub
+	power = 1
+	exponent = 0
+	while cmp_op(power, value):
+		power *= base
+		exponent += 1
+	return exponent - sub
 
 
 def _copy_docstrings(**adfixes):
@@ -268,7 +268,7 @@ def _test_intlog_funcs(funcs, max_value, bases, precision=14, extend_range=False
 	"""Test the given integer logarithm functions up to max_value for all the given bases
 
 	A note on the precision argument:
-	Since some of the floating point values returned by log(base ** power, base) are not exactly equal to power, we round
+	Since some of the floating point values returned by log(base ** exponent, base) are not exactly equal to exponent, we round
 	the return value of log() to the given precision - just enough to get the correct return value with exact powers.
 	"""
 	from math import log, ceil, floor
@@ -284,18 +284,18 @@ def _test_intlog_funcs(funcs, max_value, bases, precision=14, extend_range=False
 		if extend_range:
 			extend_fast_intlog_range_to_bitlen(max_value.bit_length(), base)
 		for value in range(1, max_value + 1):
-			power = gt_func(value, base)
-			assert base ** (power - 1) <= value < base ** power
-			assert power == ceil(round(log(value + epsilon, base), precision))
-			power = ge_func(value, base)
-			assert base ** (power - 1) < value <= base ** power
-			assert power == ceil(round(log(value, base), precision))
-			power = lt_func(value, base)
-			assert base ** power < value <= base ** (power + 1)
-			assert power == floor(round(log(value - epsilon, base), precision))
-			power = le_func(value, base)
-			assert base ** power <= value < base ** (power + 1)
-			assert power == floor(round(log(value, base), precision))
+			exponent = gt_func(value, base)
+			assert base ** (exponent - 1) <= value < base ** exponent
+			assert exponent == ceil(round(log(value + epsilon, base), precision))
+			exponent = ge_func(value, base)
+			assert base ** (exponent - 1) < value <= base ** exponent
+			assert exponent == ceil(round(log(value, base), precision))
+			exponent = lt_func(value, base)
+			assert base ** exponent < value <= base ** (exponent + 1)
+			assert exponent == floor(round(log(value - epsilon, base), precision))
+			exponent = le_func(value, base)
+			assert base ** exponent <= value < base ** (exponent + 1)
+			assert exponent == floor(round(log(value, base), precision))
 
 def _test_all_intlog_funcs(max_value, bases, precision=14, verbose=False):
 	from functools import partial
