@@ -26,6 +26,13 @@ O(1). The slow_*_log() functions use the usual algorithm, so their complexity is
 (The point of the slow_*_log() functions is that if you know that your value is going to be absolutely humongous,
 and you care more about memory than speed, you can avoid filling the lookup table if you want)
 
+[The complexity is only O(1) if one assumes basic operations on integers to be O(1). int.bit_length() is actually
+O(1), because Python knows the length of the buffer used to store the integer, and only has to check the most
+significant element. Addition, multiplication, comparison, etc., however, are O(log N) on integers, so all the
+functions are reeeally O(log N). In practice, however, when going from N=1 to N=2**200000, the fast_*_log()
+functions are only 2x slower on average (20x worst-case), while the slow_*_log() ones are 3000000x slower, taking
+over a second per call to calculate the result!]
+
 The space requirement of the lookup table is O(log N) per each used base; Logarithms of values up to 2**64 in any
 base can be calculated with a lookup table of around 64 elements. The LUT method is 2-10x faster than the usual
 method on typical inputs, although we are talking about only microseconds here. (The usual method can be ~30% - or
