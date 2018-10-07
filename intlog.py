@@ -56,6 +56,9 @@ for item in '>:gt >=:ge ≥:ge <:lt <=:le ≤:le'.split():
 del operator, name, value, item, alias
 
 
+_log_error = 'Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)'
+
+
 _lut = {}
 def _init_base(base):
 	"""Validate the given base, and either initialize or fetch the lookup table - and the previous power and limit - for it"""
@@ -103,7 +106,7 @@ def gt_log(value, base):
 	This is also the exact integer equivalent of: ceil(log(value + 1, base))
 	"""
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	try:
 		power, limit = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
@@ -117,7 +120,7 @@ def ge_log(value, base):
 	This is also the exact integer equivalent of: ceil(log(value, base))
 	"""
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	try:
 		power, limit = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
@@ -131,7 +134,7 @@ def lt_log(value, base):
 	This is also the exact integer equivalent of: floor(log(value - 1, base))
 	"""
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	try:
 		power, limit = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
@@ -145,7 +148,7 @@ def le_log(value, base):
 	This is also the exact integer equivalent of: floor(log(value, base))
 	"""
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	try:
 		power, limit = _lut[base][value.bit_length()]
 	except (KeyError, IndexError):
@@ -159,7 +162,7 @@ def int_log(value, base, rounding):
 	the returned integer is chosen in relation to the real-valued return value of log(value, base).
 	"""
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	add_op, cmp_op, _, _ = _ROUNDING[rounding]
 	try:
 		power, limit = _lut[base][value.bit_length()]
@@ -192,7 +195,7 @@ def fast_int_log(value, base, rounding):
 
 def slow_gt_log(value, base):
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	result = 1
 	power = 0
 	while result <= value:
@@ -202,7 +205,7 @@ def slow_gt_log(value, base):
 
 def slow_ge_log(value, base):
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	result = 1
 	power = 0
 	while result < value:
@@ -212,7 +215,7 @@ def slow_ge_log(value, base):
 
 def slow_lt_log(value, base):
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	result = 1
 	power = 0
 	while result < value:
@@ -222,7 +225,7 @@ def slow_lt_log(value, base):
 
 def slow_le_log(value, base):
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	result = 1
 	power = 0
 	while result <= value:
@@ -232,7 +235,7 @@ def slow_le_log(value, base):
 
 def slow_int_log(value, base, rounding):
 	if value <= 0:
-		raise ValueError('Logarithm is only defined for numbers greater than zero (the power approaches negative infinity as the value approaches zero)')
+		raise ValueError(_log_error)
 	_, _, cmp_op, sub = _ROUNDING[rounding]
 	result = 1
 	power = 0
